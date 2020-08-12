@@ -1,0 +1,25 @@
+{:paths
+ ["resources" "src" "test"]
+ :deps
+ {cheshire {:mvn/version "5.8.1"}
+  org.clojure/clojure {:mvn/version "1.10.1"}
+  org.clojure/spec.alpha {:mvn/version "0.2.176"}
+  org.clojure/test.check {:mvn/version "0.10.0"}
+  me.raynes/fs {:mvn/version "1.4.6"}}
+ :aliases
+ {:dev
+  {:extra-deps
+   {nrepl/nrepl {:mvn/version "0.6.0"}
+    cider/cider-nrepl {:mvn/version "0.22.0"}}}
+  :test
+  {:extra-paths []
+   :extra-deps {}}
+  :runner
+  {:extra-deps
+   {com.cognitect/test-runner
+    {:git/url "https://github.com/cognitect-labs/test-runner"
+     :sha "3cb0a9daf1cb746259dc8309b218f9211ad3b33b"}}
+   :main-opts ["-m" "cognitect.test-runner"]}
+  :nREPL
+  {:extra-deps
+   {nrepl/nrepl {:mvn/version "0.6.0"}}}}}
