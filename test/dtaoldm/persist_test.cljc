@@ -41,3 +41,13 @@
        (sut/persist-aol test-aol path)
        (sut/persist-aol test-aol path-new)
        (t/is (= (slurp path) (slurp path-new))))))
+
+(comment
+
+  (let [test-aol (u/generate-test-aol)
+        path (fs/file u/tmp-path "aol-initially-empty.txt")]
+    (sut/persist-aol test-aol path)
+    (let [read-aol (sut/read-aol path)]
+      read-aol))
+
+)

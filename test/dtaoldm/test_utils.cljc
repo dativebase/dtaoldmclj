@@ -58,6 +58,8 @@
 
   (aol/aol->domain-entities test-aol)
 
+  (generate-large-test-aol 100)
+
   (aol/aol-valid? (generate-large-test-aol 200))
 
   (aol/aol->domain-entities (generate-large-test-aol 200))

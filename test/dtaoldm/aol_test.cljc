@@ -2,6 +2,7 @@
   (:require [dtaoldm.aol :as sut]
             [dtaoldm.domain :as domain]
             [dtaoldm.utils :as u]
+            [dtaoldm.test-utils :as tu]
             #?(:clj [clojure.test :as t]
                :cljs [cljs.test :as t :include-macros true])))
 
@@ -246,17 +247,39 @@
           (t/is (= err actual-err))
           (t/is (= merged actual-merged)))))))
 
-(comment
+(defn generate-test-domain-aol-and-entities []
+  (let [[old-instance-1 _] (domain/construct-old-instance
+                            {:slug "oka" :name "Okanagan OLD"
+                             :url "http://127.0.0.1:5679/oka"})
+        [old-instance-2 _] (domain/construct-old-instance
+                            {:slug "bla" :name "Blackfoot OLD"
+                             :url "http://127.0.0.1:5679/bla"})
+        [dative-app _] (domain/construct-dative-app
+                        {:url "http://127.0.0.1:5678/"})
+        [old-service _] (domain/construct-old-service
+                         {:url "http://127.0.0.1:5679/"})
+        now-str (u/get-now-str)]
+    [(reduce sut/aol-append
+             []
+             (concat
+              (sut/entity->eavts old-instance-1 now-str)
+              (sut/entity->eavts old-instance-2 now-str)
+              (sut/entity->eavts dative-app now-str)
+              (sut/entity->eavts old-service now-str)))
+     {:old-instances #{old-instance-1 old-instance-2}
+      :dative-apps #{dative-app}
+      :old-services #{old-service}}]))
 
-  (generate-initial-aol)
+(t/deftest aol-roundtripping-test
+  (t/testing (str "we can store some domain entities in an AOL and then"
+                  " correctly extract them again as domain entities.")
+    (let [[aol domain-entities] (generate-test-domain-aol-and-entities)]
+      (t/is (= domain-entities (sut/aol->domain-entities aol))))))
 
-  (let [new-from-target
-        [[["X" "X" "X" "X"]
-          "a8d3e115a1b419295df1b6860f0a3267"
-          "9f917f50674577a6fb4b1d3f13f7f125"]]
-        new-from-mergee
-        [["d" "d" "d" "d"]]]
-    (reduce sut/aol-append new-from-target new-from-mergee))
+(t/deftest serialize-aol-test
+  (t/testing "AOLs can be JSON-serialized and deserialized correctly"
+    (let [aol (tu/generate-large-test-aol 100)
+          serialized-aol (u/get-json aol)
+          deserialized-aol (u/parse-json serialized-aol)]
+      (t/is (= aol deserialized-aol)))))
 
-
-)

@@ -1,24 +1,27 @@
 (ns dtaoldm.aol
   "DativeTop Append-only Log Domain Model (DTAOLDM)."
-  (:require [dtaoldm.utils :as u]))
+  (:require [dtaoldm.utils :as u]
+            [clojure.string :as str]))
 
-(def has-attr "db::has")
-(def lacks-attr "db::lacks")
-(def is-a-attr "db::is-a")
-(def being-val "being")
-(def extant-pred [has-attr being-val])
-(def non-existent-pred [lacks-attr being-val])
-(def being-preds [extant-pred non-existent-pred])
+(defn- ensure-attr [[ns attr]]
+  (cond
+    (and (seq ns) (seq attr)) [ns attr]
+    (seq ns) [nil ns]
+    (seq attr) [nil attr]
+    :else [nil "failed-keyword"]))
+
+(defn- deserialize-attribute [a]
+  (apply keyword (-> a (str/split #"__" 2) ensure-attr)))
+
+(defn- serialize-attribute [a]
+  (if-let [ns (namespace a)] (str ns "__" (name a)) (name a)))
 
 (defn appendable->map
+  "Given an appendable (a 3-ary vector whose first element is an eavt vector),
+  return a map (describing the appendable) with a :db/id key and a map entry
+  derived from the a and the v."
   [[[e a v _] _ _]]
-  {e (merge
-      {:db/id e}
-      (cond
-        (= extant-pred [a v]) {:db/extant true}
-        (= non-existent-pred [a v]) {:db/extant false}
-        (= is-a-attr a) {:db/type v}
-        :else {(keyword "dtaoldm.domain" a) v}))})
+  {e {:db/id e (deserialize-attribute a) v}})
 
 (defn pluralize-keyword [kw] (-> kw name (str "s") keyword))
 
@@ -33,10 +36,10 @@
        vals
        (filter :db/extant)
        (group-by :db/type)
-       (map (juxt (comp pluralize-keyword key) val))
+       (map (juxt (comp pluralize-keyword key) (comp set val)))
        (into {})))
 
-(defn locate-start-index-reducer
+(defn- locate-start-index-reducer
   "Function to be passed to ``reduce`` in order to determine the starting index
   (int) of the suffix of a mergee changset (sequence) into a target changeset
   (sequence)"
@@ -142,17 +145,17 @@
 (def is-not-db-meta-entry? (complement is-db-meta-entry?))
 
 (defn entity->eavts
-  "Given an entity map ``entity`` of type ``:dtaoldm.domain/type`` (a
-  string), deterministically return a sequence of eavt vectors that would be
-  sufficient to represent that domain entity in the append-only log."
+  "Given an entity map ``entity`` of type ``:db/type`` (string),
+  deterministically return a sequence of eavt vectors that would be sufficient to
+  represent that domain entity in the append-only log."
   ([entity] (entity->eavts entity (u/get-now-str)))
   ([{e :db/id e-type :db/type e-extant :db/extant :as entity} t]
    (->> entity
         (filter is-not-db-meta-entry?)
         (sort-by key)
-        (map (fn [[a v]] [e (name a) v t]))
-        (concat [[e (if e-extant has-attr lacks-attr) being-val t]
-                 [e is-a-attr e-type t]]))))
+        (map (fn [[a v]] [e (serialize-attribute a) v t]))
+        (concat [[e (serialize-attribute :db/extant) e-extant t]
+                 [e (serialize-attribute :db/type) e-type t]]))))
 
 (defn aol-valid?
   "Compute whether ``aol`` is valid. Recompute all of its hashes and integrated
